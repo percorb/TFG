@@ -8,16 +8,23 @@ from sklearn.ensemble import RandomForestClassifier
 
 from FuncionesLector import PrepararDatos, PrepararFila_v3
 
+stop_event_T = None
+
 # Preparación de los datos
 def PrepararDataset(ruta):
+    global stop_event_T
+    stop_event_T = threading.Event()
     csv = pd.read_csv(ruta)
     X = csv.drop(columns=["Label"]).values # Nos da todos los valores menos las etiquetas
     y = csv["Label"].values # Etiquetas, objetivos de la predicción 
     return X,y
 
 def EscalarDatos(X):
+    print("Bien aqui 3")
     scaler = StandardScaler()
+    print("Bien aqui 4")
     X = scaler.fit_transform(X)
+    print("Bien aqui 5")
     return scaler,X
 
 def PrepararModelo(X,y):
@@ -34,7 +41,7 @@ def PrepararModelo(X,y):
     return rf
 
 def ConectarArduinoLocal():
-    arduino = serial.Serial('COM5', 115200) 
+    arduino = serial.Serial('COM6', 115200) 
     
     return arduino
 
@@ -123,8 +130,10 @@ def PrediccionReal(arduino,ventana,rf, scaler):
             print(f"Error durante la predicción: {e}")
             
 def PrediccionRealThread(arduino,ventana,rf, scaler, callback):
+    global stop_event_T
+    stop_event_T.clear()
     buffer = []
-    while True:
+    while not stop_event_T.is_set():
         try:
             # Leer del arduino
             linea = arduino.readline().decode().strip()
@@ -137,26 +146,38 @@ def PrediccionRealThread(arduino,ventana,rf, scaler, callback):
             
             if len(buffer) == ventana:
                 # Extraemos las características
+                print("Bien")
                 caracteristicas,error = PrepararFila_v3(buffer)
+                print("Bien 2")
                         
                 # Escalamos los datos
                 caracteristicas = scaler.transform([caracteristicas])
+                print("Bien 3")
                 
                 # Predicción
                 pred = rf.predict(caracteristicas)[0] # Máxima probabilidad
+                print("Bien 4")
                 
                 # Probabilidades
                 probs = rf.predict_proba(caracteristicas)[0]
+                print("Bien 5")
                 
                 # Me quedo con las 3 mejores para comprobar
                 indices = np.argsort(probs)[::-1][:3]
+                print("Bien 6")
                 
-                top3 = [(rf.classes_[i]) for i in indices]
+                top3 = [(rf.classes_[i], probs[i]) for i in indices]
+                print("Bien 7")
                 
                 callback(pred,top3)
+                print("Bien 8")
                 
                 # Vaciamos el buffer y volvemos a leer
                 buffer = []
             
         except Exception as e:
             print(f"Error durante la predicción: {e}")
+            
+def PararTraduccion():
+    global stop_event_T
+    stop_event_T.set()

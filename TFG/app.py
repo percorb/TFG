@@ -152,7 +152,11 @@ def callback_fail():
     Seleccionado = False
     label_info.configure(text="Conexión WiFi fallida")
     
-    
+def SalirTraduccion(frame_traduccion):
+    PararTraduccion()
+    Volver(frame_traduccion)
+
+
 # ================================ #
 # Funciones del menú de traducción #
 # ================================ #
@@ -182,7 +186,9 @@ def IniciarTraduccion():
         try:
             ruta = SeleccionarDataset()
             X,y = PrepararDataset(ruta)
+            print("Bien aqui")
             scaler,X = EscalarDatos(X)
+            print("Bien aqui")
             rf = PrepararModelo(X,y)
             threading.Thread(
                 target=PrediccionRealThread,
@@ -193,13 +199,13 @@ def IniciarTraduccion():
             print(f"Error al iniciar la traducción: {e}")
 
 def actualizar_ui(pred, top3):
-    label_Prediccion.configure(text=f"Predicción: {pred}")
-
-    label_probs.configure(
-        text="Confianza: " + " | ".join(
-            f"{c}: {p:.1%}" for c, p in top3
+    def _update():
+        label_Prediccion.configure(text=f"Predicción: {pred}")
+        label_probs.configure(
+            text="Confianza: " + " | ".join(f"{c}: {p:.1%}" for c, p in top3)
         )
-    )
+
+    label_Prediccion.after(0, _update)
 
 # ======================== #
 # Frame del menú principal #
@@ -441,7 +447,7 @@ frame_traduccion = ctk.CTkFrame(app)
 btn_salir = ctk.CTkButton(
     master=frame_traduccion,
     text="Volver",
-    command=lambda: Volver(frame_traduccion),
+    command=lambda: SalirTraduccion(frame_traduccion),
     width=200,
     height=40,
     font=("Arial", 18)

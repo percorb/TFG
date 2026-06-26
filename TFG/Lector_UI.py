@@ -55,7 +55,7 @@ def inicializar():
     # Serial #
     # ====== #
     # Acceso al puerto serial del Arduino
-    arduino = serial.Serial('COM5', 115200,timeout=1)
+    arduino = serial.Serial('COM6', 115200,timeout=1)
 
 
     # ============= #
