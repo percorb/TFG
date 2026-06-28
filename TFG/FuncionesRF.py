@@ -146,31 +146,23 @@ def PrediccionRealThread(arduino,ventana,rf, scaler, callback):
             
             if len(buffer) == ventana:
                 # Extraemos las características
-                print("Bien")
                 caracteristicas,error = PrepararFila_v3(buffer)
-                print("Bien 2")
                         
                 # Escalamos los datos
                 caracteristicas = scaler.transform([caracteristicas])
-                print("Bien 3")
                 
                 # Predicción
                 pred = rf.predict(caracteristicas)[0] # Máxima probabilidad
-                print("Bien 4")
                 
                 # Probabilidades
                 probs = rf.predict_proba(caracteristicas)[0]
-                print("Bien 5")
                 
                 # Me quedo con las 3 mejores para comprobar
                 indices = np.argsort(probs)[::-1][:3]
-                print("Bien 6")
                 
                 top3 = [(rf.classes_[i], probs[i]) for i in indices]
-                print("Bien 7")
                 
                 callback(pred,top3)
-                print("Bien 8")
                 
                 # Vaciamos el buffer y volvemos a leer
                 buffer = []
