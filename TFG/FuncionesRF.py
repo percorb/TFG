@@ -10,6 +10,16 @@ from FuncionesLector import PrepararDatos, PrepararFila_v3
 
 stop_event_T = None
 
+error = False
+
+def getErrorTraduccion():
+    global error
+    return error
+
+def setErrorTraduccion():
+    global error
+    error = False
+
 # Preparación de los datos
 def PrepararDataset(ruta):
     global stop_event_T
@@ -105,7 +115,7 @@ def PrediccionReal(arduino,ventana,rf, scaler):
             if len(buffer) == ventana:
                 # Extraemos las características
                 caracteristicas,error = PrepararFila_v3(buffer)
-                        
+                    
                 # Escalamos los datos
                 caracteristicas = scaler.transform([caracteristicas])
                 
@@ -130,9 +140,10 @@ def PrediccionReal(arduino,ventana,rf, scaler):
             print(f"Error durante la predicción: {e}")
             
 def PrediccionRealThread(arduino,ventana,rf, scaler, callback):
-    global stop_event_T
+    global stop_event_T, error
     stop_event_T.clear()
     buffer = []
+    historial_pred = []
     while not stop_event_T.is_set():
         try:
             # Leer del arduino
@@ -147,12 +158,21 @@ def PrediccionRealThread(arduino,ventana,rf, scaler, callback):
             if len(buffer) == ventana:
                 # Extraemos las características
                 caracteristicas,error = PrepararFila_v3(buffer)
-                        
+                if error:
+                    arduino.close()
+                    return
                 # Escalamos los datos
                 caracteristicas = scaler.transform([caracteristicas])
                 
                 # Predicción
-                pred = rf.predict(caracteristicas)[0] # Máxima probabilidad
+                pred_raw = rf.predict(caracteristicas)[0]
+
+                historial_pred.append(pred_raw)
+
+                if len(historial_pred) > 7:
+                    historial_pred.pop(0)
+
+                pred = max(set(historial_pred), key=historial_pred.count)
                 
                 # Probabilidades
                 probs = rf.predict_proba(caracteristicas)[0]
@@ -165,11 +185,12 @@ def PrediccionRealThread(arduino,ventana,rf, scaler, callback):
                 callback(pred,top3)
                 
                 # Vaciamos el buffer y volvemos a leer
-                buffer = []
+                buffer.clear()
             
         except Exception as e:
             print(f"Error durante la predicción: {e}")
             
 def PararTraduccion():
     global stop_event_T
-    stop_event_T.set()
+    if stop_event_T is not None:
+        stop_event_T.set()

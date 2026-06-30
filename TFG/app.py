@@ -156,6 +156,18 @@ def SalirTraduccion(frame_traduccion):
     PararTraduccion()
     Volver(frame_traduccion)
 
+def ActualizarErrorTraduccion():
+    error = getErrorTraduccion()
+    if error:
+        if arduino is not None:
+            arduino.close()
+        frame_actual = ObtenerFrameActual()
+        if frame_actual is not None:
+            frame_actual.pack_forget()
+        frame_error.pack(fill="both",expand=True)
+        setErrorTraduccion()
+        
+    app.after(500,ActualizarErrorTraduccion) 
 
 # ================================ #
 # Funciones del menú de traducción #
@@ -506,4 +518,5 @@ label_error.place(relx=0.5, rely=0.1, anchor=tk.CENTER)
 ListaFrames = [frame_control_lectura, frame_lectura, frame_fin_lectura, frame_menu, frame_menu_traduccion, frame_traduccion]
 
 ActualizarEstado()
+ActualizarErrorTraduccion()
 app.mainloop()

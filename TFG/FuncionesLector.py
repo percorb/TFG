@@ -22,7 +22,21 @@ def CalcularRoll(Ay,Az):
 
 def PrepararFila_v3(datos):
     datos = np.array(datos)
+
+    # ===== VALIDACIÓN DE ERROR EN DATOS CRUDOS =====
+    flex = datos[:, :5].astype(float)      # dedos
+    gyro = datos[:, 8:11].astype(float)    # giroscopio crudo
+
+    error_dedo = np.any(flex == 4095)
+    error_gyro = np.all(gyro == 0)
+
+    error = error_dedo or error_gyro
+
+    if error:
+        return None, True
+
     Informacion = []
+
     # 1. Media de flexión
     for i in range(0,5):
         Informacion.append(np.mean(datos[:,i]))
@@ -53,9 +67,5 @@ def PrepararFila_v3(datos):
     Gmag = [np.sqrt(datos[i,8]**2 + datos[i,9]**2 + datos[i,10]**2) for i in range(10)]
     Informacion.append(np.mean(Gmag))
     Informacion.append(np.std(Gmag))
-    arr_info = np.array(Informacion)
-
-    error = np.any((arr_info == 4095.0) | (arr_info == 0.0))
-    print([float(x) for x in Informacion])
-    print(error)
-    return [float(x) for x in Informacion],error
+    
+    return [float(x) for x in Informacion], False
