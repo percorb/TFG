@@ -1,5 +1,12 @@
+# ======================================================== #
+# FUncionesLector.py                                       #
+# Módulo encargado de procesar los datos del lector        #
+# Autor: David Periñán Corbacho                            #
+# ======================================================== #
+
 import numpy as np
 
+# Pasa los datos de string a valores numéricos.
 def PrepararDatos(datos):
    
     # Hay que prepararlos uno a uno
@@ -13,17 +20,20 @@ def PrepararDatos(datos):
     
     return datos
 
+# Calcula el pitch a partir de los valores del acelerómetro (X, Y, Z).
 def CalcularPitch(Ax,Ay,Az):
     valor = np.sqrt((np.square(Ay)) + (np.square(Az)))
     return np.arctan2(Ax, valor)
 
+# Calcula el roll a partir de los valores del acelerómetro (Y, Z).
 def CalcularRoll(Ay,Az):
     return np.arctan2(Ay, Az)
 
+# Procesa los datos y los convierte en un vector de características para el modelo de predicción.
 def PrepararFila_v3(datos):
     datos = np.array(datos)
 
-    # ===== VALIDACIÓN DE ERROR EN DATOS CRUDOS =====
+    # VALIDACIÓN DE ERROR EN DATOS 
     flex = datos[:, :5].astype(float)      # dedos
     gyro = datos[:, 8:11].astype(float)    # giroscopio crudo
 

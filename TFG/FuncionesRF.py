@@ -1,9 +1,13 @@
-import socket
+# ====================================================================== #
+# FuncionesRF.py                                                         #
+# Módulo encargado de gestionar la lógica del modelo de machine learning #
+# Autor: David Periñán Corbacho                                          #
+# ====================================================================== #
+
 import threading
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
-import serial
 from sklearn.ensemble import RandomForestClassifier
 
 from FuncionesLector import PrepararDatos, PrepararFila_v3
@@ -12,10 +16,12 @@ stop_event_T = None
 
 error = False
 
+# Devuelve si ha habido un error en la traducción de datos
 def getErrorTraduccion():
     global error
     return error
 
+# Establece el flag error a False
 def setErrorTraduccion():
     global error
     error = False
@@ -29,14 +35,13 @@ def PrepararDataset(ruta):
     y = csv["Label"].values # Etiquetas, objetivos de la predicción 
     return X,y
 
+# Escala los datos mediante StandardScaler y devuelve el scaler y los datos escalados
 def EscalarDatos(X):
-    print("Bien aqui 3")
     scaler = StandardScaler()
-    print("Bien aqui 4")
     X = scaler.fit_transform(X)
-    print("Bien aqui 5")
     return scaler,X
 
+# Entrena el modelo de Random Forest y devuelve el modelo entrenado
 def PrepararModelo(X,y):
     # Preparación del modelo
     rf = RandomForestClassifier(
@@ -50,55 +55,7 @@ def PrepararModelo(X,y):
     
     return rf
 
-def ConectarArduinoLocal():
-    arduino = serial.Serial('COM6', 115200) 
-    
-    return arduino
-
-def ConectarArduinoWifi(ip):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((ip,5000))
-    print("Conectado")
-    
-    arduino = sock.makefile()
-    return arduino
-
-cancel_wifi = threading.Event() # Por si se pulsa otro botón, se cancela la conexión
-
-def ConectarArduinoWifiThread(ip, callback_ok, callback_fail):
-    def worker():
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(0.5)
-            conectado=False
-            intentos=0
-            while not cancel_wifi.is_set() and intentos<100:
-                intentos+=1
-                print(f"{intentos}/100")
-                try:
-                    sock.connect((ip,5000))
-                    conectado = True
-                    break
-                except Exception as e:
-                    continue
-            
-            if not conectado and not cancel_wifi.is_set():
-                callback_fail()
-                return
-            elif not conectado and cancel_wifi.is_set():
-                return
-                    
-            arduino = sock.makefile()
-            print("Conectado")
-            
-            callback_ok(arduino)
-            
-        except Exception as e:
-            print(f"Error durante la conexión WiFi: {e}")
-            callback_fail()
-    threading.Thread(target=worker,daemon=True).start() # Para que funcione en segundo plano
-
-
+# Predicción en tiempo real, bloqueante, no recomendable para usar en la UI
 def PrediccionReal(arduino,ventana,rf, scaler):
     buffer = []
     while True:
@@ -138,7 +95,8 @@ def PrediccionReal(arduino,ventana,rf, scaler):
             
         except Exception as e:
             print(f"Error durante la predicción: {e}")
-            
+
+# Predicción en tiempo real, no bloqueante, se utiliza actualmente           
 def PrediccionRealThread(arduino,ventana,rf, scaler, callback):
     global stop_event_T, error
     stop_event_T.clear()
@@ -189,7 +147,8 @@ def PrediccionRealThread(arduino,ventana,rf, scaler, callback):
             
         except Exception as e:
             print(f"Error durante la predicción: {e}")
-            
+
+# Para el proceso de traducción a través de un evento    
 def PararTraduccion():
     global stop_event_T
     if stop_event_T is not None:

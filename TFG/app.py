@@ -1,19 +1,29 @@
+# ======================================================== #
+# app.py                                                   #
+# Módulo encargado de coordinar la interfaz de usuario     #
+# Autor: David Periñán Corbacho                            #
+# ======================================================== #
+
+import threading
 import tkinter as tk
 from tkinter import filedialog
 import customtkinter as ctk
 
 from Lector_UI import setLetra, IniciarLectura, ContinuarLectura, PararLectura, getFila, getMuestra, getFin, getError, setError
-from FuncionesRF import *
+from FuncionesRF import PararTraduccion, PrepararDataset, EscalarDatos, PrepararModelo, PrediccionRealThread, getErrorTraduccion, setErrorTraduccion
+from FuncionesArduino import ConectarArduinoLocal, cancel_wifi, ConectarArduinoWifiThread
 
+# Preparación de la interfaz
 ctk.set_appearance_mode("system") # Para que tenga un modo oscuro o claro
 ctk.set_default_color_theme("green") # Los botones serán verdes
 
 app = ctk.CTk() # Para crear la ventana
-app.geometry("400x400")
+app.geometry("400x400") # Tamaño inicial de la ventana
 
 app.resizable(False, False) # Para no redimensionar la ventana
-app.title("Interfaz del guante traductor")
+app.title("Interfaz del guante traductor") 
 
+# -- Variables globales -- #
 Letra=None
 ip=None
 Seleccionado=False # Flag para saber si el usuario ha seleccionado una conexión con el Arduino
@@ -30,19 +40,23 @@ def ObtenerFrameActual():
 # ============================ #
 # Funciones del menú principal #
 # ============================ #
+# Cierra la pantalla del menú principal y abre la del menú de traducción
 def Traduccion():
     frame_menu.pack_forget()
     frame_menu_traduccion.pack(fill="both",expand=True)
-    
+
+# Cierra la pantalla del menú principal y abre la del menú de lectura
 def Lectura():
     frame_menu.pack_forget()
-    frame_lectura.pack(fill="both",expand=True)
+    frame_menu_lectura.pack(fill="both",expand=True)
     if arduino is not None:
         arduino.close()
-    
+
+# Cierra la interfaz y finaliza el proceso
 def Salir():
     app.destroy()
 
+# Cierra la pantalla actual y vuelve al menú principal. Cerrando el arduino si es necesario
 def Volver(frame):
     global arduino
     if arduino is not None:
@@ -54,6 +68,7 @@ def Volver(frame):
 # ============================= #
 # Funciones del menú de lectura #
 # ============================= #
+# Guarda la letra introducida en el entry y la envía al sistema
 def GuardarLetra():
     global Letra
     letra = entry_texto.get().strip().upper()
@@ -67,6 +82,7 @@ def GuardarLetra():
     info.configure(text=f"Letra seleccionada: {letra}")
     print(f"Letra enviada al sistema: {letra}")
 
+# Comprueba si hay una letra seleccionada y comienza la lectura de datos.
 def Leer():
     global Letra
     if not Letra:
@@ -74,23 +90,25 @@ def Leer():
         return
     else:
         try:
-            frame_lectura.pack_forget()
-            frame_control_lectura.pack(fill="both",expand=True)
+            # Cerrar la pantalla del menú de lectura y abre la de lectura
+            frame_menu_lectura.pack_forget() 
+            frame_lectura.pack(fill="both",expand=True)
             IniciarLectura()
         except Exception as e:
-            print(f"No se puede acceder al puerto serial")
+            print(f"No se puede acceder al puerto serial: {e}")
             return
 
 # ======================================== #
 # Funciones del menú de control de lectura #
 # ======================================== #
-
+# Detiene el proceso y vuelve a la pantalla del menú de lectura
 def salir_lectura():
     PararLectura()
 
-    frame_control_lectura.pack_forget()
-    frame_lectura.pack(fill="both", expand=True)
-    
+    frame_lectura.pack_forget()
+    frame_menu_lectura.pack(fill="both", expand=True)
+
+# Actualiza el estado de la lectura, mostrando las muestras y la fila actual. Si hay un error, cambnia a la pantalla de error.    
 def ActualizarEstado():
     # Obtenemos los datos actuales
     muestra = getMuestra()
@@ -107,13 +125,13 @@ def ActualizarEstado():
         frame_error.pack(fill="both",expand=True)
         setError()
     # Para cerrar la lectura cuando este termina
-    if fin and frame_control_lectura.winfo_ismapped():
-        frame_control_lectura.pack_forget()
+    if fin and frame_lectura.winfo_ismapped():
+        frame_lectura.pack_forget()
         frame_fin_lectura.pack(fill="both", expand=True)
         fin = False
     else:
         # Mandamos dichos datos a sus labels específicos
-        label_muestra.configure(text=f"Muestras: {muestra}/50")
+        label_muestra.configure(text=f"Muestras: {muestra}/150")
         label_fila.delete("1.0", "end")
         label_fila.insert("end", f"{fila}")
     app.after(500,ActualizarEstado) # Realiza este proceso cada 0.5 segundos
@@ -121,7 +139,7 @@ def ActualizarEstado():
 # =========================================== #
 # Funciones del menú de control de traducción #
 # =========================================== #
-
+# Función para conectar con el Arduino de forma local desde la pantalla del menú de traducción.
 def ConexionLocal():
     global Seleccionado, arduino
     try:
@@ -130,10 +148,11 @@ def ConexionLocal():
         label_info.configure(text="Conexión local exitosa")
         Seleccionado=True
     except Exception as e:
-        print("No se ha podido conectar por el puerto serial")
+        print(f"No se ha podido conectar por el puerto serial: {e}")
         label_info.configure(text="Conexión local fallida")
         Seleccionado=False
 
+# Función para conectar con el Arduino mediante WiFi desde la pantalla del menú de traducción mediante hilos para no bloquear la UI.
 def ConexionWifi():
     cancel_wifi.clear()
     ip = entry_ip.get().strip()
@@ -141,21 +160,25 @@ def ConexionWifi():
     
     ConectarArduinoWifiThread(ip,callback_ok,callback_fail)
 
+# Función de callback para cuando la conexión WiFi es exitosa. Cambia el estado de la variable global Seleccionado a True y actualiza el label de información.
 def callback_ok(arduino_conn):
     global arduino, Seleccionado
     arduino = arduino_conn
     Seleccionado = True
     label_info.configure(text="Conexión WiFi OK")
-    
+
+# Función de callback para cuando la conexión WiFi falla. Cambia el estado de la variable global Seleccionado a False y actualiza el label de información.
 def callback_fail():
     global Seleccionado
     Seleccionado = False
     label_info.configure(text="Conexión WiFi fallida")
-    
+
+# Detiene el proceso de traducción y vuelve a la pantalla del menú principal.
 def SalirTraduccion(frame_traduccion):
     PararTraduccion()
     Volver(frame_traduccion)
 
+# Comprueba si se ha producido algún error en la traducción y cambia a la pantalla de error si es así.
 def ActualizarErrorTraduccion():
     error = getErrorTraduccion()
     if error:
@@ -172,7 +195,7 @@ def ActualizarErrorTraduccion():
 # ================================ #
 # Funciones del menú de traducción #
 # ================================ #
-
+# Abre un cuadro de diálogo para seleccionar un archivo .csv. Devuelve la ruta del archivo seleccionado o None si no se seleccionó nada.
 def SeleccionarDataset():
     ruta = filedialog.askopenfilename(
         title="Selecciona un archivo .csv",
@@ -184,7 +207,8 @@ def SeleccionarDataset():
     else:
         print("No se seleccionó nada")
         return None
-    
+
+# Cambia a la pantalla de traducción y comienza el proceso de predicción en tiempo real.
 def IniciarTraduccion():
     cancel_wifi.set()
     global arduino
@@ -198,9 +222,7 @@ def IniciarTraduccion():
         try:
             ruta = SeleccionarDataset()
             X,y = PrepararDataset(ruta)
-            print("Bien aqui")
             scaler,X = EscalarDatos(X)
-            print("Bien aqui")
             rf = PrepararModelo(X,y)
             threading.Thread(
                 target=PrediccionRealThread,
@@ -210,6 +232,7 @@ def IniciarTraduccion():
         except Exception as e:
             print(f"Error al iniciar la traducción: {e}")
 
+# Actualiza la información de la predicción y la muestra en la interfaz de usuario.
 def actualizar_ui(pred, top3):
     def _update():
         label_Prediccion.configure(text=f"Predicción: {pred}")
@@ -244,22 +267,22 @@ lectura.place(relx=0.5,rely=0.5,anchor=tk.CENTER)
 salir = ctk.CTkButton(master=frame_menu,text="Salir",command=Salir,width=200,height=40,font=("Arial", 18))
 salir.place(relx=0.5,rely=0.7,anchor=tk.CENTER)
 
-# ================ #
-# Frame de Lectura #
-# ================ #
-frame_lectura = ctk.CTkFrame(app)
+# ========================= #
+# Frame del menú de Lectura #
+# ========================= #
+frame_menu_lectura = ctk.CTkFrame(app)
 
 # Título
 titulo = ctk.CTkLabel(
-    master=frame_lectura,
-    text="Modo lectura",
+    master=frame_menu_lectura,
+    text="Menú de lectura",
     font=("Arial", 24, "bold")
 )
 titulo.place(relx=0.5, rely=0.1, anchor=tk.CENTER)  
 
 # Input de texto
 entry_texto = ctk.CTkEntry(
-    master=frame_lectura,
+    master=frame_menu_lectura,
     width=250,
     placeholder_text="Introduce el texto a traducir..."
 )
@@ -270,7 +293,7 @@ texto = f"Letra seleccionada: {letra}" if Letra else "No hay letra seleccionada"
 
 # Informacion
 info = ctk.CTkLabel(
-    master=frame_lectura,
+    master=frame_menu_lectura,
     text=texto,
     font=("Arial", 20, "bold")
 )
@@ -279,7 +302,7 @@ info.place(relx=0.5, rely=0.23, anchor=tk.CENTER)
 # Botones
 # Guardar letra
 btn_save = ctk.CTkButton(
-    frame_lectura,
+    frame_menu_lectura,
     text="Guardar letra",
     command=GuardarLetra,
     width=200,
@@ -290,7 +313,7 @@ btn_save.place(relx=0.5,rely=0.5,anchor=tk.CENTER)
 
 # Iniciar lectura
 btn_iniciar = ctk.CTkButton(
-    frame_lectura,
+    frame_menu_lectura,
     text="Iniciar lectura de datos",
     command=Leer,
     width=200,
@@ -301,23 +324,23 @@ btn_iniciar.place(relx=0.5,rely=0.65,anchor=tk.CENTER)
 
 # Volver al menú principal
 btn_volver = ctk.CTkButton(
-    frame_lectura,
+    frame_menu_lectura,
     text="Volver",
-    command=lambda: Volver(frame_lectura),
+    command=lambda: Volver(frame_menu_lectura),
     width=200,
     height=40,
     font=("Arial", 18)
 )
 btn_volver.place(relx=0.5,rely=0.8,anchor=tk.CENTER)
 
-# =========================== #
-# Frame de control de lectura #
-# =========================== #
-frame_control_lectura = ctk.CTkFrame(app)
+# ================ #
+# Frame de lectura #
+# ================ #
+frame_lectura = ctk.CTkFrame(app)
 
 # Botones
 btn_continuar = ctk.CTkButton(
-    master=frame_control_lectura,
+    master=frame_lectura,
     text="Continuar",
     command=ContinuarLectura,
     width=200,
@@ -327,7 +350,7 @@ btn_continuar = ctk.CTkButton(
 btn_continuar.place(relx=0.5, rely=0.6, anchor=tk.CENTER)
 
 btn_salir = ctk.CTkButton(
-    master=frame_control_lectura,
+    master=frame_lectura,
     text="Salir",
     command=salir_lectura,
     width=200,
@@ -338,17 +361,17 @@ btn_salir.place(relx=0.5, rely=0.75, anchor=tk.CENTER)
 
 # Labels
 label_muestra = ctk.CTkLabel(
-    master=frame_control_lectura,
-    text="Muestras: 0/50",
+    master=frame_lectura,
+    text="Muestras: 0/150",
     font=("Arial", 18, "bold")
 )
 label_muestra.place(relx=0.5, rely=0.1, anchor=tk.CENTER)  
 
 label_fila = ctk.CTkTextbox(
-    master=frame_control_lectura,
+    master=frame_lectura,
     font=("Arial", 14, "bold"),
     width=350, 
-    height=120
+    height=130
 )
 label_fila.place(relx=0.5, rely=0.3, anchor=tk.CENTER)  
 
@@ -385,7 +408,7 @@ frame_menu_traduccion = ctk.CTkFrame(app)
 # Título
 titulo = ctk.CTkLabel(
     master=frame_menu_traduccion,
-    text="Selecciona la conexión",
+    text="Menú de traducción",
     font=("Arial", 24, "bold")
 )
 titulo.place(relx=0.5, rely=0.1, anchor=tk.CENTER)  
@@ -393,7 +416,7 @@ titulo.place(relx=0.5, rely=0.1, anchor=tk.CENTER)
 # Label de información
 label_info = ctk.CTkLabel(
     master=frame_menu_traduccion,
-    text="",
+    text="Selecciona una conexión con el Arduino",
     font=("Arial", 18)
 )
 label_info.place(relx=0.5, rely=0.17, anchor=tk.CENTER) 
@@ -481,13 +504,6 @@ label_probs = ctk.CTkLabel(
 )
 label_probs.place(relx=0.5, rely=0.2, anchor=tk.CENTER)  
 
-label_candidatos = ctk.CTkLabel(
-    master=frame_traduccion,
-    text="A | B | C",
-    font=("Arial", 18, "bold")
-)
-label_candidatos.place(relx=0.5, rely=0.3, anchor=tk.CENTER)  
-
 # ============== #
 # Frame de error #
 # ============== #
@@ -515,7 +531,7 @@ label_error.place(relx=0.5, rely=0.1, anchor=tk.CENTER)
 
 
 # Lista con todos los frames
-ListaFrames = [frame_control_lectura, frame_lectura, frame_fin_lectura, frame_menu, frame_menu_traduccion, frame_traduccion]
+ListaFrames = [frame_lectura, frame_menu_lectura, frame_fin_lectura, frame_menu, frame_menu_traduccion, frame_traduccion]
 
 ActualizarEstado()
 ActualizarErrorTraduccion()
