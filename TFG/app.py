@@ -533,6 +533,8 @@ label_error.place(relx=0.5, rely=0.1, anchor=tk.CENTER)
 # Lista con todos los frames
 ListaFrames = [frame_lectura, frame_menu_lectura, frame_fin_lectura, frame_menu, frame_menu_traduccion, frame_traduccion]
 
-ActualizarEstado()
-ActualizarErrorTraduccion()
-app.mainloop()
+
+if __name__ == "__main__":
+    ActualizarEstado()
+    ActualizarErrorTraduccion()
+    app.mainloop()
