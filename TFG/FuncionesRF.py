@@ -5,6 +5,7 @@
 # ====================================================================== #
 
 import threading
+from serial import SerialException
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
@@ -45,7 +46,7 @@ def EscalarDatos(X):
 def PrepararModelo(X,y):
     # Preparación del modelo
     rf = RandomForestClassifier(
-        n_estimators=1000, # Número de árboles
+        n_estimators=300, # Número de árboles
         random_state=42, # Semilla para poder reproducir resultados
         n_jobs=-1 # Estamos diciendo que las operaciones se puedan hacer en paralelo
     )
@@ -144,7 +145,13 @@ def PrediccionRealThread(arduino,ventana,rf, scaler, callback):
                 
                 # Vaciamos el buffer y volvemos a leer
                 buffer.clear()
-            
+        
+        except SerialException:
+            print("El Arduino se ha desconectado.")
+            error = True
+            arduino.close()
+            return   
+        
         except Exception as e:
             print(f"Error durante la predicción: {e}")
 

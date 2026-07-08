@@ -5,7 +5,9 @@
 # ========================================================= #
 
 import os # Para comprobar si el archivo está vacío
-import threading # Para que la UI no se bloquee
+import threading
+
+from serial import SerialException # Para que la UI no se bloquee
 
 from FuncionesLector import PrepararDatos, PrepararFila_v3
 from FuncionesArduino import ConectarArduinoLocal
@@ -146,6 +148,12 @@ def Lector():
                 
             else:
                 ventana_actual+=1
+        except SerialException:
+            print("El Arduino se ha desconectado.")
+            error = True
+            arduino.close()
+            return        
+        
         except Exception as e:
             print(f"Error: {e}")
             continue

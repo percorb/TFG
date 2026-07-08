@@ -34,11 +34,15 @@ def PrepararFila_v3(datos):
     datos = np.array(datos)
 
     # VALIDACIÓN DE ERROR EN DATOS 
+    if datos is None or len(datos) != 10:
+        return None, True
+    
     flex = datos[:, :5].astype(float)      # dedos
     gyro = datos[:, 8:11].astype(float)    # giroscopio crudo
 
     error_dedo = np.any(flex == 4095)
     error_gyro = np.all(gyro == 0)
+    
 
     error = error_dedo or error_gyro
 

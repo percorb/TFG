@@ -27,12 +27,12 @@ metricas = ["accuracy", "precision_macro", "recall_macro","f1_macro"]
 
 # 4. Diccionario con los modelos a comparar
 modelos = {
-    "Random Forest": RandomForestClassifier(random_state=seed),
-    "Decision Tree": DecisionTreeClassifier(random_state=seed),
-    "Logistic Regression": LogisticRegression(random_state=seed, max_iter=1000),
-    "KNN": KNeighborsClassifier(),
-    "SVM": SVC(random_state=seed),
-    "Naive Bayes": GaussianNB()
+    "Random Forest": RandomForestClassifier(n_estimators=300, random_state=seed, max_depth=20),
+    "Decision Tree": DecisionTreeClassifier(min_samples_split=2, random_state=seed, max_depth=None),
+    "Logistic Regression": LogisticRegression(random_state=seed, max_iter=1000, C=10),
+    "KNN": KNeighborsClassifier(weights="distance", n_neighbors=7),
+    "SVM": SVC(random_state=seed, kernel="linear", C=10),
+    "Naive Bayes": GaussianNB(var_smoothing=1e-07)
 }
 
 Escalado = {
