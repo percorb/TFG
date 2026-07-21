@@ -11,7 +11,7 @@ import numpy as np
 # 2. Ahora importamos TODO lo de FuncionesRF sin usar los puntos ".."
 from FuncionesRF import *
 
-ruta = "./Dataset/dataset_total.csv"
+ruta = "./Dataset/dataset_total.csv" # La ruta es incorrecta, debe estar en la carpeta TFG
 seed = 42 # Semilla para permitir reproducibilidad de resultados
 
 # 1. Obtener los datos del dataset

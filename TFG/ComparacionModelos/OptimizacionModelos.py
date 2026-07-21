@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 from FuncionesRF import *
 
 seed = 42
-ruta = "./Dataset/dataset_total.csv"
+ruta = "./Dataset/dataset_total.csv" # La ruta es incorrecta, debe estar en la carpeta TFG
 
 # Cargar dataset
 X, y = PrepararDataset(ruta)
