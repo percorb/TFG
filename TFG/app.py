@@ -61,6 +61,8 @@ def Volver(frame):
     global arduino
     if arduino is not None:
         arduino.close()
+    if label_info is not None:
+        label_info.configure(text="Selecciona una conexión con el Arduino")
     cancel_wifi.set()
     frame.pack_forget()
     frame_menu.pack(fill="both",expand=True)
@@ -144,6 +146,8 @@ def ConexionLocal():
     global Seleccionado, arduino
     try:
         cancel_wifi.set() # Por si está intentando conectar via WiFi
+        if arduino is not None:
+            arduino.close()
         arduino = ConectarArduinoLocal()
         label_info.configure(text="Conexión local exitosa")
         Seleccionado=True
