@@ -94,12 +94,20 @@ void loop() {
 
   // ================================================
 
+  int valor = 0;
+    if (flex[4]<3000){
+      valor = flex[4] + 1260;
+    }
+    else{
+      valor = flex[4] - 20;
+    }
+
   String mensaje =
       String(flex[0]) + "," +
       String(flex[1]) + "," +
       String(flex[2]) + "," +
       String(flex[3]) + "," +
-      String(flex[4]) + "," +
+      String(valor) + "," +
       String(Ax, 2) + "," +
       String(Ay, 2) + "," +
       String(Az, 2) + "," +

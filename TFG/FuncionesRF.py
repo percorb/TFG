@@ -106,7 +106,13 @@ def PrediccionRealThread(arduino,ventana,rf, scaler, callback):
     while not stop_event_T.is_set():
         try:
             # Leer del arduino
-            linea = arduino.readline().decode().strip()
+            linea = arduino.readline()
+
+            if isinstance(linea, bytes):
+                linea = linea.decode()
+
+            linea = linea.strip()
+
             data = linea.split(',')
             
             if len(data) != 11:
