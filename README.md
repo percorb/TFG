@@ -1,4 +1,3 @@
-
 # Guante Inteligente Traductor de Lengua de Signos
 
 ## Requisitos
