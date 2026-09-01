@@ -1,5 +1,6 @@
 import pandas as pd
 import glob
+import os
 
 # coger todos los CSV del directorio
 csv_files = glob.glob("Dataset/*.csv")
@@ -12,6 +13,10 @@ print("Archivos usados:", csv_files)
 # leer y unir
 df_list = [pd.read_csv(f) for f in csv_files]
 df_total = pd.concat(df_list, ignore_index=True)
+
+# Eliminar los datos anteriores
+if os.path.exists("Dataset/dataset_total.csv"):
+    os.remove("Dataset/dataset_total.csv")
 
 # guardar
 df_total.to_csv("Dataset/dataset_total.csv", index=False)
